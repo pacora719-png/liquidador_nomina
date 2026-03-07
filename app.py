@@ -1,275 +1,249 @@
 import streamlit as st
+import pandas as pd
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from datetime import date
-import pandas as pd
-import re
 from PIL import Image
-import os
+import re
 
-st.title("LIQUIDADOR DE NÓMINA - MULTI EMPLEADOS")
+st.title("LIQUIDADOR DE NÓMINA")
+st.markdown("### by Juan Pablo Villegas")
 
-# Formato pesos colombianos
 def pesos(valor):
     return "${:,.0f}".format(valor).replace(",", ".")
 
-# Lista de empleados
 if "empleados" not in st.session_state:
     st.session_state.empleados = []
 
-# Datos de empresa
-st.subheader("Datos de la empresa")
+st.header("Datos de la empresa")
+
 empresa = st.text_input("Nombre de la empresa")
-nit = st.text_input("NIT o Cédula del empleador")
-rep_legal = st.text_input("Representante legal / Persona a cargo (opcional)")
-rep_cedula = st.text_input("Cédula del representante legal (opcional)")
+nit = st.text_input("NIT o cédula del empleador")
 
-# Logo
-logo = st.file_uploader("Logo de la empresa (opcional)", type=["png", "jpg", "jpeg"])
+logo = st.file_uploader("Logo de la empresa (opcional)", type=["png","jpg","jpeg"])
 
-# Periodo y observaciones
-st.subheader("Periodo de pago")
-fecha_inicio = st.date_input("Fecha inicio periodo", date.today())
-fecha_fin = st.date_input("Fecha fin periodo", date.today())
-observaciones = st.text_area("Observaciones / notas")
+st.header("Periodo de pago")
 
-# Formulario para nuevo empleado
-st.subheader("Agregar empleado")
-with st.form("nuevo_empleado"):
-    nombre = st.text_input("Nombre del empleado")
-    cedula = st.text_input("Cédula del empleado")
-    salario_mensual = st.number_input("Salario mensual", value=1750905)
-    dias_trabajados = st.number_input("Días trabajados (base 30)", min_value=0, max_value=30, value=30)
+fecha_inicio = st.date_input("Fecha inicio", date.today())
+fecha_fin = st.date_input("Fecha fin", date.today())
 
-    # Horas extras
-    st.markdown("**Horas extras**")
-    extra_diurna_horas = st.number_input("Horas extra diurnas", value=0)
-    extra_nocturna_horas = st.number_input("Horas extra nocturnas", value=0)
-    extra_dominical_horas = st.number_input("Horas extra dominical/festivo", value=0)
-    extra_nocturna_dominical_horas = st.number_input("Horas extra nocturna dominical/festivo", value=0)
+observaciones = st.text_area("Observaciones")
 
-    # Recargos
-    st.markdown("**Recargos**")
-    recargo_nocturno_horas = st.number_input("Horas con recargo nocturno", value=0)
-    recargo_dominical_horas = st.number_input("Horas dominicales o festivas", value=0)
+st.header("Carga opcional de empleados desde Excel")
 
-    # Otros devengados
-    st.markdown("**Otros devengados**")
-    bonificaciones = st.number_input("Bonificaciones", value=0)
+archivo_excel = st.file_uploader("Subir Excel", type=["xlsx"])
 
-    # Deducciones
-    st.markdown("**Deducciones**")
-    consumos = st.number_input("Consumos", value=0)
-    danos = st.number_input("Daños", value=0)
-    ahorros = st.number_input("Ahorros", value=0)
+if archivo_excel:
 
-    submitted = st.form_submit_button("Agregar empleado")
-    if submitted:
-        # Cálculos
-        salario = (salario_mensual / 30) * dias_trabajados
-        valor_hora = salario_mensual / 220
+    df = pd.read_excel(archivo_excel)
 
-        extra_diurna = valor_hora * 1.25 * extra_diurna_horas
-        extra_nocturna = valor_hora * 1.75 * extra_nocturna_horas
-        extra_dominical = valor_hora * 2.15 * extra_dominical_horas
-        extra_nocturna_dominical = valor_hora * 2.65 * extra_nocturna_dominical_horas
+    st.dataframe(df)
 
-        recargo_nocturno = valor_hora * 0.35 * recargo_nocturno_horas
-        recargo_dominical = valor_hora * 0.90 * recargo_dominical_horas
+    if st.button("Cargar empleados Excel"):
 
-        auxilio_transporte = (249095 / 30) * dias_trabajados if salario_mensual <= 3501810 else 0
+        for _,row in df.iterrows():
 
-        devengado = (
-            salario + extra_diurna + extra_nocturna + extra_dominical +
-            extra_nocturna_dominical + recargo_nocturno + recargo_dominical +
-            bonificaciones + auxilio_transporte
-        )
+            empleado_data = {
 
-        salud = salario * 0.04
-        pension = salario * 0.04
+                "Empleado":row["nombre"],
+                "Cédula":row["cedula"],
+                "Días trabajados":row["dias"],
+                "Salario":row["salario"],
+                "Auxilio Transporte":0,
+                "Horas Extra Diurna":0,
+                "Horas Extra Nocturna":0,
+                "Horas Extra Dominical":0,
+                "Horas Extra Nocturna Dominical":0,
+                "Recargo Nocturno":0,
+                "Recargo Dominical":0,
+                "Bonificaciones":0,
+                "IBC":row["salario"],
+                "Devengado":row["salario"],
+                "Salud":row["salario"]*0.04,
+                "Pensión":row["salario"]*0.04,
+                "Consumos":0,
+                "Daños":0,
+                "Ahorros":0,
+                "Otros":0,
+                "Deducciones":row["salario"]*0.08,
+                "Neto":row["salario"]*0.92
+            }
 
-        deducciones = salud + pension + consumos + danos + ahorros
-        neto = devengado - deducciones
+            st.session_state.empleados.append(empleado_data)
+
+        st.success("Empleados cargados")
+
+st.header("Agregar empleado manualmente")
+
+with st.form("empleado"):
+
+    nombre = st.text_input("Nombre empleado")
+    cedula = st.text_input("Cédula")
+
+    salario_mensual = st.number_input("Salario mensual",value=1750905)
+
+    dias_trabajados = st.number_input("Días trabajados",0,30,30)
+
+    pago_incapacidad = st.checkbox("Pago incapacidad")
+
+    st.subheader("Horas extras")
+
+    extra_diurna_h = st.number_input("Horas extra diurna",0)
+    extra_nocturna_h = st.number_input("Horas extra nocturna",0)
+    extra_dominical_h = st.number_input("Extra dominical/festivo",0)
+    extra_nocturna_dom_h = st.number_input("Extra nocturna dominical",0)
+
+    st.subheader("Recargos")
+
+    recargo_nocturno_h = st.number_input("Recargo nocturno",0)
+    recargo_dominical_h = st.number_input("Recargo dominical",0)
+
+    bonificaciones = st.number_input("Bonificaciones",0)
+
+    st.subheader("Deducciones")
+
+    consumos = st.number_input("Consumos",0)
+    danos = st.number_input("Daños",0)
+    ahorros = st.number_input("Ahorros",0)
+    otros = st.number_input("Otros",0)
+
+    agregar = st.form_submit_button("Agregar empleado")
+
+    if agregar:
+
+        salario = (salario_mensual/30)*dias_trabajados
+
+        valor_hora = salario_mensual/220
+
+        extra_diurna = valor_hora*1.25*extra_diurna_h
+        extra_nocturna = valor_hora*1.75*extra_nocturna_h
+        extra_dominical = valor_hora*2.15*extra_dominical_h
+        extra_nocturna_dom = valor_hora*2.65*extra_nocturna_dom_h
+
+        recargo_nocturno = valor_hora*0.35*recargo_nocturno_h
+        recargo_dominical = valor_hora*0.90*recargo_dominical_h
+
+        if pago_incapacidad:
+            auxilio = 0
+        else:
+            auxilio = (249095/30)*dias_trabajados if salario_mensual<=3501810 else 0
+
+        ibc = salario+extra_diurna+extra_nocturna+extra_dominical+extra_nocturna_dom+recargo_nocturno+recargo_dominical+bonificaciones
+
+        salud = ibc*0.04
+        pension = ibc*0.04
+
+        devengado = ibc+auxilio
+
+        deducciones = salud+pension+consumos+danos+ahorros+otros
+
+        neto = devengado-deducciones
 
         empleado_data = {
-            "Empleado": nombre,
-            "Cédula": cedula,
-            "Días trabajados": dias_trabajados,
-            "Salario": salario,
-            "Auxilio Transporte": auxilio_transporte,
-            "Horas Extra Diurna": extra_diurna,
-            "Horas Extra Nocturna": extra_nocturna,
-            "Horas Extra Dominical": extra_dominical,
-            "Horas Extra Nocturna Dominical": extra_nocturna_dominical,
-            "Recargo Nocturno": recargo_nocturno,
-            "Recargo Dominical": recargo_dominical,
-            "Bonificaciones": bonificaciones,
-            "Devengado": devengado,
-            "Salud": salud,
-            "Pensión": pension,
-            "Consumos": consumos,
-            "Daños": danos,
-            "Ahorros": ahorros,
-            "Deducciones": deducciones,
-            "Neto": neto,
-            "Resumen Horas": {
-                "Extra Diurna": extra_diurna_horas,
-                "Extra Nocturna": extra_nocturna_horas,
-                "Extra Dominical/Festivo": extra_dominical_horas,
-                "Extra Nocturna Dominical/Festivo": extra_nocturna_dominical_horas,
-                "Recargo Nocturno": recargo_nocturno_horas,
-                "Recargo Dominical/Festivo": recargo_dominical_horas
-            }
+
+            "Empleado":nombre,
+            "Cédula":cedula,
+            "Días trabajados":dias_trabajados,
+            "Salario":salario,
+            "Auxilio Transporte":auxilio,
+            "Horas Extra Diurna":extra_diurna,
+            "Horas Extra Nocturna":extra_nocturna,
+            "Horas Extra Dominical":extra_dominical,
+            "Horas Extra Nocturna Dominical":extra_nocturna_dom,
+            "Recargo Nocturno":recargo_nocturno,
+            "Recargo Dominical":recargo_dominical,
+            "Bonificaciones":bonificaciones,
+            "IBC":ibc,
+            "Devengado":devengado,
+            "Salud":salud,
+            "Pensión":pension,
+            "Consumos":consumos,
+            "Daños":danos,
+            "Ahorros":ahorros,
+            "Otros":otros,
+            "Deducciones":deducciones,
+            "Neto":neto
         }
 
         st.session_state.empleados.append(empleado_data)
-        st.success(f"Empleado {nombre} agregado")
 
-# Mostrar empleados agregados
-st.subheader("Empleados agregados")
-for idx, emp in enumerate(st.session_state.empleados):
-    st.write(f"{idx+1}. {emp['Empleado']} - Neto a pagar: {pesos(emp['Neto'])}")
+        st.success("Empleado agregado")
 
-# Función PDF corregida
-def generar_pdf(empleado_data):
-    nombre_seguro = re.sub(r'[^a-zA-Z0-9_]', '', empleado_data['Empleado'].replace(' ', '_'))
-    archivo = f"colilla_{nombre_seguro}.pdf"
-    c = canvas.Canvas(archivo, pagesize=letter)
-    y = 750
+st.header("Lista empleados")
 
-    # LOGO CORREGIDO
+for emp in st.session_state.empleados:
+
+    st.write(emp["Empleado"],"Neto:",pesos(emp["Neto"]))
+
+def generar_pdf(emp):
+
+    nombre_seguro=re.sub(r'[^a-zA-Z0-9]','_',emp["Empleado"])
+
+    archivo=f"colilla_{nombre_seguro}.pdf"
+
+    c=canvas.Canvas(archivo,pagesize=letter)
+
+    y=750
+
     if logo is not None:
+
         image = Image.open(logo)
-        image.save("temp_logo.png")
-        c.drawImage("temp_logo.png", 50, 730, width=100, height=50)
 
-    # TITULO
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(200, 750, "COLILLA DE PAGO")
-    y -= 40
-    c.setFont("Helvetica", 10)
+        image.save("logo_temp.png")
 
-    # Datos empresa y empleado
-    c.drawString(50, y, f"Empresa: {empresa}")
-    y -= 20
-    c.drawString(50, y, f"NIT: {nit}")
-    y -= 30
-    c.drawString(50, y, f"Empleado: {empleado_data['Empleado']}")
-    y -= 20
-    c.drawString(50, y, f"Cédula: {empleado_data['Cédula']}")
-    y -= 20
-    c.drawString(50, y, f"Días trabajados: {empleado_data['Días trabajados']}")
-    y -= 30
-    c.drawString(50, y, f"Periodo: {fecha_inicio} a {fecha_fin}")
-    y -= 20
-    c.drawString(50, y, f"Observaciones: {observaciones}")
-    y -= 30
+        c.drawImage("logo_temp.png",50,720,width=120,height=60)
 
-    # Resumen horas
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(50, y, "RESUMEN HORAS EXTRAS / RECARGOS")
-    y -= 20
-    c.setFont("Helvetica", 10)
-    for k, v in empleado_data["Resumen Horas"].items():
-        c.drawString(50, y, f"{k}: {v} horas")
-        y -= 15
-    y -= 10
+    c.drawString(220,y,"COLILLA DE PAGO")
 
-    # Devengados
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(50, y, "DEVENGADOS")
-    c.drawRightString(550, y, "VALOR")
-    y -= 20
-    c.setFont("Helvetica", 10)
-    devengados_lista = [
-        ("Salario", empleado_data["Salario"]),
-        ("Auxilio transporte", empleado_data["Auxilio Transporte"]),
-        ("Horas Extra Diurna", empleado_data["Horas Extra Diurna"]),
-        ("Horas Extra Nocturna", empleado_data["Horas Extra Nocturna"]),
-        ("Horas Extra Dominical", empleado_data["Horas Extra Dominical"]),
-        ("Horas Extra Nocturna Dominical", empleado_data["Horas Extra Nocturna Dominical"]),
-        ("Recargo Nocturno", empleado_data["Recargo Nocturno"]),
-        ("Recargo Dominical", empleado_data["Recargo Dominical"]),
-        ("Bonificaciones", empleado_data["Bonificaciones"])
-    ]
-    for concepto, valor in devengados_lista:
-        c.drawString(50, y, concepto)
-        c.drawRightString(550, y, pesos(valor))
-        y -= 20
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(50, y, "TOTAL DEVENGADO")
-    c.drawRightString(550, y, pesos(empleado_data["Devengado"]))
-    y -= 40
+    y-=50
 
-    # Deducciones
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(50, y, "DEDUCCIONES")
-    c.drawRightString(550, y, "VALOR")
-    y -= 20
-    c.setFont("Helvetica", 10)
-    deducciones_lista = [
-        ("Salud", empleado_data["Salud"]),
-        ("Pensión", empleado_data["Pensión"]),
-        ("Consumos", empleado_data["Consumos"]),
-        ("Daños", empleado_data["Daños"]),
-        ("Ahorros", empleado_data["Ahorros"])
-    ]
-    for concepto, valor in deducciones_lista:
-        c.drawString(50, y, concepto)
-        c.drawRightString(550, y, pesos(valor))
-        y -= 20
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(50, y, "TOTAL DEDUCCIONES")
-    c.drawRightString(550, y, pesos(empleado_data["Deducciones"]))
-    y -= 40
+    c.drawString(50,y,f"Empresa: {empresa}")
+    y-=20
+    c.drawString(50,y,f"NIT: {nit}")
 
-    # Neto
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, y, "NETO A PAGAR")
-    c.drawRightString(550, y, pesos(empleado_data["Neto"]))
-    y -= 80
+    y-=30
 
-    # Líneas de firma
-    if rep_legal and rep_cedula:
-        c.line(50, y, 250, y)
-        c.drawString(50, y-15, f"{rep_legal} - {rep_cedula}")
-        c.drawString(50, y-30, "Representante legal / Persona a cargo")
-    c.line(300, y, 550, y)
-    c.drawString(300, y-15, f"{empleado_data['Empleado']} - {empleado_data['Cédula']}")
-    c.drawString(300, y-30, "Empleado / Aprobación")
+    c.drawString(50,y,f"Empleado: {emp['Empleado']}")
+    y-=20
+    c.drawString(50,y,f"Cédula: {emp['Cédula']}")
+    y-=20
+    c.drawString(50,y,f"Días trabajados: {emp['Días trabajados']}")
+    y-=20
+    c.drawString(50,y,f"Periodo: {fecha_inicio} a {fecha_fin}")
+
+    y-=40
+
+    c.drawString(50,y,"Total Devengado")
+    c.drawRightString(550,y,pesos(emp["Devengado"]))
+
+    y-=20
+
+    c.drawString(50,y,"Total Deducciones")
+    c.drawRightString(550,y,pesos(emp["Deducciones"]))
+
+    y-=20
+
+    c.drawString(50,y,"Neto a Pagar")
+    c.drawRightString(550,y,pesos(emp["Neto"]))
+
+    y-=60
+
+    c.line(300,y,550,y)
+    c.drawString(300,y-20,emp["Empleado"])
+    c.drawString(300,y-35,"Firma empleado")
 
     c.save()
 
-    # Borrar logo temporal
-    if logo is not None:
-        os.remove("temp_logo.png")
-
     return archivo
 
-# Botones PDF individual con key único
-st.subheader("Generar colilla PDF individual")
-for idx, emp in enumerate(st.session_state.empleados):
-    boton_id = f"pdf_{emp['Empleado'].replace(' ','_')}_{idx}"
-    if st.button(f"Generar PDF - {emp['Empleado']}", key=boton_id):
-        archivo = generar_pdf(emp)
-        with open(archivo, "rb") as file:
-            st.download_button(
-                label=f"Descargar PDF - {emp['Empleado']}",
-                data=file,
-                file_name=archivo,
-                mime="application/pdf"
-            )
+st.header("Generar PDF")
 
-# Botón Excel completo
-st.subheader("Exportar nómina completa a Excel")
-if st.button("Generar Excel de todos los empleados"):
-    df = pd.DataFrame(st.session_state.empleados)
-    archivo_excel = "nomina_completa.xlsx"
-    df.to_excel(archivo_excel, index=False)
-    with open(archivo_excel, "rb") as file:
-        st.download_button(
-            label="Descargar Excel completo",
-            data=file,
-            file_name=archivo_excel,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+for i,emp in enumerate(st.session_state.empleados):
+
+    if st.button(f"PDF {emp['Empleado']}",key=i):
+
+        archivo=generar_pdf(emp)
+
+        with open(archivo,"rb") as f:
+
+            st.download_button("Descargar PDF",f,file_name=archivo)
