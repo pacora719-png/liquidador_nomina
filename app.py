@@ -177,6 +177,8 @@ for emp in st.session_state.empleados:
 
 def generar_pdf(emp):
 
+    import re
+
     nombre_seguro=re.sub(r'[^a-zA-Z0-9]','_',emp["Empleado"])
 
     archivo=f"colilla_{nombre_seguro}.pdf"
@@ -186,64 +188,163 @@ def generar_pdf(emp):
     y=750
 
     if logo is not None:
-
         image = Image.open(logo)
-
         image.save("logo_temp.png")
-
         c.drawImage("logo_temp.png",50,720,width=120,height=60)
 
+    c.setFont("Helvetica-Bold",14)
     c.drawString(220,y,"COLILLA DE PAGO")
-
-    y-=50
-
-    c.drawString(50,y,f"Empresa: {empresa}")
-    y-=20
-    c.drawString(50,y,f"NIT: {nit}")
-
-    y-=30
-
-    c.drawString(50,y,f"Empleado: {emp['Empleado']}")
-    y-=20
-    c.drawString(50,y,f"Cédula: {emp['Cédula']}")
-    y-=20
-    c.drawString(50,y,f"Días trabajados: {emp['Días trabajados']}")
-    y-=20
-    c.drawString(50,y,f"Periodo: {fecha_inicio} a {fecha_fin}")
 
     y-=40
 
-    c.drawString(50,y,"Total Devengado")
+    c.setFont("Helvetica",10)
+
+    c.drawString(50,y,f"Empresa: {empresa}")
+    y-=15
+    c.drawString(50,y,f"NIT: {nit}")
+    y-=15
+    c.drawString(50,y,f"Empleado: {emp['Empleado']}")
+    y-=15
+    c.drawString(50,y,f"Cédula: {emp['Cédula']}")
+    y-=15
+    c.drawString(50,y,f"Días trabajados: {emp['Días trabajados']}")
+    y-=15
+    c.drawString(50,y,f"Periodo: {fecha_inicio} a {fecha_fin}")
+
+    y-=30
+
+    c.setFont("Helvetica-Bold",11)
+    c.drawString(50,y,"DEVENGADOS")
+
+    y-=20
+    c.setFont("Helvetica",10)
+
+    c.drawString(50,y,"Salario")
+    c.drawRightString(550,y,pesos(emp["Salario"]))
+
+    y-=15
+    c.drawString(50,y,"Auxilio Transporte")
+    c.drawRightString(550,y,pesos(emp["Auxilio Transporte"]))
+
+    y-=15
+    c.drawString(50,y,"Bonificaciones")
+    c.drawRightString(550,y,pesos(emp["Bonificaciones"]))
+
+    y-=25
+
+    c.setFont("Helvetica-Bold",11)
+    c.drawString(50,y,"RESUMEN HORAS Y RECARGOS")
+
+    y-=20
+    c.setFont("Helvetica",10)
+
+    c.drawString(50,y,"Horas Extra Diurna")
+    c.drawRightString(300,y,str(extra_diurna_h))
+    c.drawRightString(550,y,pesos(emp["Horas Extra Diurna"]))
+
+    y-=15
+    c.drawString(50,y,"Horas Extra Nocturna")
+    c.drawRightString(300,y,str(extra_nocturna_h))
+    c.drawRightString(550,y,pesos(emp["Horas Extra Nocturna"]))
+
+    y-=15
+    c.drawString(50,y,"Horas Extra Dominical")
+    c.drawRightString(300,y,str(extra_dominical_h))
+    c.drawRightString(550,y,pesos(emp["Horas Extra Dominical"]))
+
+    y-=15
+    c.drawString(50,y,"Extra Nocturna Dominical")
+    c.drawRightString(300,y,str(extra_nocturna_dom_h))
+    c.drawRightString(550,y,pesos(emp["Horas Extra Nocturna Dominical"]))
+
+    y-=15
+    c.drawString(50,y,"Recargo Nocturno")
+    c.drawRightString(300,y,str(recargo_nocturno_h))
+    c.drawRightString(550,y,pesos(emp["Recargo Nocturno"]))
+
+    y-=15
+    c.drawString(50,y,"Recargo Dominical")
+    c.drawRightString(300,y,str(recargo_dominical_h))
+    c.drawRightString(550,y,pesos(emp["Recargo Dominical"]))
+
+    y-=30
+
+    c.setFont("Helvetica-Bold",11)
+    c.drawString(50,y,"DEDUCCIONES")
+
+    y-=20
+    c.setFont("Helvetica",10)
+
+    c.drawString(50,y,"Salud")
+    c.drawRightString(550,y,pesos(emp["Salud"]))
+
+    y-=15
+    c.drawString(50,y,"Pensión")
+    c.drawRightString(550,y,pesos(emp["Pensión"]))
+
+    y-=15
+    c.drawString(50,y,"Consumos")
+    c.drawRightString(550,y,pesos(emp["Consumos"]))
+
+    y-=15
+    c.drawString(50,y,"Daños")
+    c.drawRightString(550,y,pesos(emp["Daños"]))
+
+    y-=15
+    c.drawString(50,y,"Ahorros")
+    c.drawRightString(550,y,pesos(emp["Ahorros"]))
+
+    y-=15
+    c.drawString(50,y,"Otros")
+    c.drawRightString(550,y,pesos(emp["Otros"]))
+
+    y-=30
+
+    c.setFont("Helvetica-Bold",11)
+
+    c.drawString(50,y,"TOTAL DEVENGADO")
     c.drawRightString(550,y,pesos(emp["Devengado"]))
 
     y-=20
 
-    c.drawString(50,y,"Total Deducciones")
+    c.drawString(50,y,"TOTAL DEDUCCIONES")
     c.drawRightString(550,y,pesos(emp["Deducciones"]))
 
     y-=20
 
-    c.drawString(50,y,"Neto a Pagar")
+    c.drawString(50,y,"NETO A PAGAR")
     c.drawRightString(550,y,pesos(emp["Neto"]))
 
     y-=60
 
     c.line(300,y,550,y)
-    c.drawString(300,y-20,emp["Empleado"])
-    c.drawString(300,y-35,"Firma empleado")
+    c.drawString(300,y-15,emp["Empleado"])
+    c.drawString(300,y-30,"Firma empleado")
 
     c.save()
 
     return archivo
+st.header("Lista de empleados")
 
-st.header("Generar PDF")
+for emp in st.session_state.empleados:
 
-for i,emp in enumerate(st.session_state.empleados):
+    st.write(emp["Empleado"], "Neto a pagar:", pesos(emp["Neto"]))
 
-    if st.button(f"PDF {emp['Empleado']}",key=i):
 
-        archivo=generar_pdf(emp)
+st.header("Generar PDF de colilla de pago")
 
-        with open(archivo,"rb") as f:
 
-            st.download_button("Descargar PDF",f,file_name=archivo)
+for i, emp in enumerate(st.session_state.empleados):
+
+    if st.button(f"Generar PDF - {emp['Empleado']}", key=i):
+
+        archivo = generar_pdf(emp)
+
+        with open(archivo, "rb") as f:
+
+            st.download_button(
+                label="Descargar PDF",
+                data=f,
+                file_name=archivo,
+                mime="application/pdf"
+            )
