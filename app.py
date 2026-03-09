@@ -37,32 +37,32 @@ if archivo_excel:
     st.dataframe(df)
     if st.button("Cargar empleados Excel"):
         for _,row in df.iterrows():
-            empleado_data = {
-                "Empleado":row["nombre"],
-                "Cédula":row["cedula"],
-                "Días trabajados":row["dias"],
-                "Salario":row["salario"],
-                "Auxilio Transporte":0,
-                "Horas Extra Diurna":0,
-                "Horas Extra Nocturna":0,
-                "Horas Extra Dominical":0,
-                "Horas Extra Nocturna Dominical":0,
-                "Recargo Nocturno":0,
-                "Recargo Dominical":0,
-                "Bonificaciones":0,
-                "IBC":row["salario"],  # IBC sin bonificaciones
-                "Devengado":row["salario"],
-                "Salud":row["salario"]*0.04,
-                "Pensión":row["salario"]*0.04,
-                "Consumos":0,
-                "Daños":0,
-                "Ahorros":0,
-                "Otros":0,
-                "Deducciones":row["salario"]*0.08,
-                "Neto":row["salario"]*0.92
-            }
-            st.session_state.empleados.append(empleado_data)
-        st.success("Empleados cargados")
+            st.session_state.empleados.append({
+                "Empleado": row["nombre"],
+                "Cédula": row["cedula"],
+                "Días trabajados": row["dias"],
+                "Salario": row["salario"],
+                "Auxilio Transporte": 0,
+                "Horas Extra Diurna": 0,
+                "Horas Extra Nocturna": 0,
+                "Horas Extra Dominical": 0,
+                "Horas Extra Nocturna Dominical": 0,
+                "Recargo Nocturno": 0,
+                "Recargo Dominical": 0,
+                "Bonificaciones": 0,
+                "IBC": row["salario"],
+                "Devengado": row["salario"],
+                "Salud": row["salario"]*0.04,
+                "Pensión": row["salario"]*0.04,
+                "Consumos": 0,
+                "Daños": 0,
+                "Ahorros": 0,
+                "Otros": 0,
+                "Deducciones": row["salario"]*0.08,
+                "Neto": row["salario"]*0.92,
+                "Situacion Especial": None
+            })
+        st.success("Empleados cargados desde Excel")
 
 # Agregar empleado manualmente
 st.header("Agregar empleado manualmente")
@@ -71,8 +71,13 @@ with st.form("empleado"):
     cedula = st.text_input("Cédula")
     salario_mensual = st.number_input("Salario mensual",value=1750905)
     dias_trabajados = st.number_input("Días trabajados",0,30,30)
-    pago_incapacidad = st.checkbox("Pago incapacidad")
-    
+
+    # Selección única de situación especial
+    situacion = st.radio(
+        "Seleccione situación especial (si aplica, en letra verde)", 
+        options=["Ninguna","Incapacidad","Vacaciones","Licencia","Teletrabajo","Empresa lo transporta"]
+    )
+
     st.subheader("Horas extras")
     extra_diurna_h = st.number_input("Horas extra diurna",0)
     extra_nocturna_h = st.number_input("Horas extra nocturna",0)
@@ -97,6 +102,7 @@ with st.form("empleado"):
         salario = (salario_mensual/30)*dias_trabajados
         valor_hora = salario_mensual/220
 
+        # Horas extras
         extra_diurna = valor_hora*1.25*extra_diurna_h
         extra_nocturna = valor_hora*1.75*extra_nocturna_h
         extra_dominical = valor_hora*2.15*extra_dominical_h
@@ -105,59 +111,61 @@ with st.form("empleado"):
         recargo_nocturno = valor_hora*0.35*recargo_nocturno_h
         recargo_dominical = valor_hora*0.90*recargo_dominical_h
 
+        # Auxilio transporte solo si salario base <= 2 SMMLV y no hay situación especial
         auxilio = 0
-        if not pago_incapacidad:
-            auxilio = (249095/30)*dias_trabajados if salario_mensual<=3501810 else 0
+        if situacion == "Ninguna" and salario_mensual <= 3501810:
+            auxilio = (249095/30) * dias_trabajados
 
-        # IBC sin incluir bonificaciones
-        ibc = salario+extra_diurna+extra_nocturna+extra_dominical+extra_nocturna_dom+recargo_nocturno+recargo_dominical
+        # IBC sin bonificaciones ni auxilio
+        ibc = salario + extra_diurna + extra_nocturna + extra_dominical + extra_nocturna_dom + recargo_nocturno + recargo_dominical
 
         salud = ibc*0.04
         pension = ibc*0.04
 
-        devengado = ibc+auxilio+bonificaciones
-        deducciones = salud+pension+consumos+danos+ahorros+otros
-        neto = devengado-deducciones
+        devengado = ibc + auxilio + bonificaciones
+        deducciones = salud + pension + consumos + danos + ahorros + otros
+        neto = devengado - deducciones
 
-        empleado_data = {
-            "Empleado":nombre,
-            "Cédula":cedula,
-            "Días trabajados":dias_trabajados,
-            "Salario":salario,
-            "Auxilio Transporte":auxilio,
-            "Horas Extra Diurna":extra_diurna,
-            "Horas Extra Nocturna":extra_nocturna,
-            "Horas Extra Dominical":extra_dominical,
-            "Horas Extra Nocturna Dominical":extra_nocturna_dom,
-            "Recargo Nocturno":recargo_nocturno,
-            "Recargo Dominical":recargo_dominical,
-            "Bonificaciones":bonificaciones,
-            "IBC":ibc,
-            "Devengado":devengado,
-            "Salud":salud,
-            "Pensión":pension,
-            "Consumos":consumos,
-            "Daños":danos,
-            "Ahorros":ahorros,
-            "Otros":otros,
-            "Deducciones":deducciones,
-            "Neto":neto
-        }
-        st.session_state.empleados.append(empleado_data)
+        st.session_state.empleados.append({
+            "Empleado": nombre,
+            "Cédula": cedula,
+            "Días trabajados": dias_trabajados,
+            "Salario": salario,
+            "Auxilio Transporte": auxilio,
+            "Horas Extra Diurna": extra_diurna,
+            "Horas Extra Nocturna": extra_nocturna,
+            "Horas Extra Dominical": extra_dominical,
+            "Horas Extra Nocturna Dominical": extra_nocturna_dom,
+            "Recargo Nocturno": recargo_nocturno,
+            "Recargo Dominical": recargo_dominical,
+            "Bonificaciones": bonificaciones,
+            "IBC": ibc,
+            "Devengado": devengado,
+            "Salud": salud,
+            "Pensión": pension,
+            "Consumos": consumos,
+            "Daños": danos,
+            "Ahorros": ahorros,
+            "Otros": otros,
+            "Deducciones": deducciones,
+            "Neto": neto,
+            "Situacion Especial": situacion
+        })
         st.success("Empleado agregado")
 
-# Lista de empleados
+# Mostrar empleados
 st.header("Lista de empleados")
 for emp in st.session_state.empleados:
     st.write(emp["Empleado"], "Neto a pagar:", pesos(emp["Neto"]))
 
-# Función para generar PDF
+# Función generar PDF
 def generar_pdf(emp):
-    nombre_seguro=re.sub(r'[^a-zA-Z0-9]','_',emp["Empleado"])
-    archivo=f"colilla_{nombre_seguro}.pdf"
-    c=canvas.Canvas(archivo,pagesize=letter)
-    y=750
+    nombre_seguro = re.sub(r'[^a-zA-Z0-9]','_',emp["Empleado"])
+    archivo = f"colilla_{nombre_seguro}.pdf"
+    c = canvas.Canvas(archivo,pagesize=letter)
+    y = 750
 
+    # Logo
     if logo is not None:
         image = Image.open(logo)
         image.save("logo_temp.png")
@@ -165,99 +173,106 @@ def generar_pdf(emp):
 
     c.setFont("Helvetica-Bold",14)
     c.drawString(220,y,"COLILLA DE PAGO")
-    y-=40
+    y -= 40
 
     c.setFont("Helvetica",10)
     c.drawString(50,y,f"Empresa: {empresa}")
-    y-=15
+    y -= 15
     c.drawString(50,y,f"NIT: {nit}")
-    y-=15
+    y -= 15
     c.drawString(50,y,f"Empleado: {emp['Empleado']}")
-    y-=15
+    y -= 15
     c.drawString(50,y,f"Cédula: {emp['Cédula']}")
-    y-=15
+    y -= 15
     c.drawString(50,y,f"Días trabajados: {emp['Días trabajados']}")
-    y-=15
+    y -= 15
     c.drawString(50,y,f"Periodo: {fecha_inicio} a {fecha_fin}")
-    y-=30
+    y -= 15
 
+    # Nota de situación especial
+    if emp["Situacion Especial"] != "Ninguna":
+        c.setFont("Helvetica-Bold",10)
+        c.setFillColorRGB(0,0.5,0)  # letra verde
+        c.drawString(50,y,f"Situación especial: {emp['Situacion Especial']}")
+        c.setFillColorRGB(0,0,0)
+        y -= 20
+
+    # Devengados
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"DEVENGADOS")
-    y-=20
+    y -= 20
     c.setFont("Helvetica",10)
     c.drawString(50,y,"Salario")
     c.drawRightString(550,y,pesos(emp["Salario"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Auxilio Transporte")
     c.drawRightString(550,y,pesos(emp["Auxilio Transporte"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Bonificaciones")
     c.drawRightString(550,y,pesos(emp["Bonificaciones"]))
-    y-=25
+    y -= 25
 
+    # Resumen horas
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"RESUMEN HORAS Y RECARGOS")
-    y-=20
+    y -= 20
     c.setFont("Helvetica",10)
     c.drawString(50,y,"Horas Extra Diurna")
-    c.drawRightString(300,y,str(extra_diurna_h))
     c.drawRightString(550,y,pesos(emp["Horas Extra Diurna"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Horas Extra Nocturna")
-    c.drawRightString(300,y,str(extra_nocturna_h))
     c.drawRightString(550,y,pesos(emp["Horas Extra Nocturna"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Horas Extra Dominical")
-    c.drawRightString(300,y,str(extra_dominical_h))
     c.drawRightString(550,y,pesos(emp["Horas Extra Dominical"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Extra Nocturna Dominical")
-    c.drawRightString(300,y,str(extra_nocturna_dom_h))
     c.drawRightString(550,y,pesos(emp["Horas Extra Nocturna Dominical"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Recargo Nocturno")
-    c.drawRightString(300,y,str(recargo_nocturno_h))
     c.drawRightString(550,y,pesos(emp["Recargo Nocturno"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Recargo Dominical")
-    c.drawRightString(300,y,str(recargo_dominical_h))
     c.drawRightString(550,y,pesos(emp["Recargo Dominical"]))
-    y-=30
+    y -= 30
 
+    # Deducciones
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"DEDUCCIONES")
-    y-=20
+    y -= 20
     c.setFont("Helvetica",10)
     c.drawString(50,y,"Salud")
     c.drawRightString(550,y,pesos(emp["Salud"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Pensión")
     c.drawRightString(550,y,pesos(emp["Pensión"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Consumos")
     c.drawRightString(550,y,pesos(emp["Consumos"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Daños")
     c.drawRightString(550,y,pesos(emp["Daños"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Ahorros")
     c.drawRightString(550,y,pesos(emp["Ahorros"]))
-    y-=15
+    y -= 15
     c.drawString(50,y,"Otros")
     c.drawRightString(550,y,pesos(emp["Otros"]))
-    y-=30
+    y -= 30
 
+    # Totales
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"TOTAL DEVENGADO")
     c.drawRightString(550,y,pesos(emp["Devengado"]))
-    y-=20
+    y -= 20
     c.drawString(50,y,"TOTAL DEDUCCIONES")
     c.drawRightString(550,y,pesos(emp["Deducciones"]))
-    y-=20
+    y -= 20
     c.drawString(50,y,"NETO A PAGAR")
     c.drawRightString(550,y,pesos(emp["Neto"]))
-    y-=60
+    y -= 60
 
+    # Firma
     c.line(300,y,550,y)
     c.drawString(300,y-15,emp["Empleado"])
     c.drawString(300,y-30,"Firma empleado")
