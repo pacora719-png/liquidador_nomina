@@ -74,7 +74,7 @@ with st.form("empleado"):
 
     # Selección única de situación especial
     situacion = st.radio(
-        "Seleccione situación especial (si aplica, en letra verde)", 
+        "Seleccione situación especial", 
         options=["Ninguna","Incapacidad","Vacaciones","Licencia","Teletrabajo","Empresa lo transporta"]
     )
 
