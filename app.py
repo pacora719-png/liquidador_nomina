@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from datetime import date
@@ -11,7 +10,6 @@ st.markdown("### by Juan Pablo Villegas")
 def pesos(valor):
     return "${:,.0f}".format(valor).replace(",", ".")
 
-# Estado
 if "empleados" not in st.session_state:
     st.session_state.empleados = []
 
@@ -27,29 +25,24 @@ fecha_inicio = st.date_input("Fecha inicio", date.today())
 fecha_fin = st.date_input("Fecha fin", date.today())
 
 # Formulario
-st.header("Agregar empleado manualmente")
+st.header("Agregar empleado")
 with st.form("empleado"):
-    nombre = st.text_input("Nombre empleado")
+    nombre = st.text_input("Nombre")
     cedula = st.text_input("Cédula")
-    salario_mensual = st.number_input("Salario mensual",value=1750905)
+    salario_mensual = st.number_input("Salario mensual", value=1750905)
     dias_trabajados = st.number_input("Días trabajados",0,30,30)
 
-    no_pension = st.checkbox("No descontar pensión (persona pensionada)")
-
-    situacion = st.radio(
-        "Seleccione situación especial", 
-        options=["Ninguna","Incapacidad","Vacaciones","Licencia","Teletrabajo","Empresa lo transporta"]
-    )
+    no_pension = st.checkbox("No descontar pensión")
 
     st.subheader("Horas extras")
-    extra_diurna_h = st.number_input("Horas extra diurna",0)
-    extra_nocturna_h = st.number_input("Horas extra nocturna",0)
-    extra_dominical_h = st.number_input("Extra dominical/festivo",0)
-    extra_nocturna_dom_h = st.number_input("Extra nocturna dominical",0)
+    h_ed = st.number_input("Extra diurna",0)
+    h_en = st.number_input("Extra nocturna",0)
+    h_ef = st.number_input("Extra dominical",0)
+    h_end = st.number_input("Extra nocturna dominical",0)
 
     st.subheader("Recargos")
-    recargo_nocturno_h = st.number_input("Recargo nocturno",0)
-    recargo_dominical_h = st.number_input("Recargo dominical",0)
+    h_rn = st.number_input("Recargo nocturno",0)
+    h_rd = st.number_input("Recargo dominical",0)
 
     bonificaciones = st.number_input("Bonificaciones",0)
 
@@ -59,32 +52,30 @@ with st.form("empleado"):
     ahorros = st.number_input("Ahorros",0)
     otros = st.number_input("Otros",0)
 
-    agregar = st.form_submit_button("Agregar empleado")
+    agregar = st.form_submit_button("Agregar")
 
     if agregar:
+        valor_hora = salario_mensual / 220
         salario = (salario_mensual/30)*dias_trabajados
-        valor_hora = salario_mensual/220
 
         # Extras
-        extra_diurna = valor_hora*1.25*extra_diurna_h
-        extra_nocturna = valor_hora*1.75*extra_nocturna_h
-        extra_dominical = valor_hora*2.15*extra_dominical_h
-        extra_nocturna_dom = valor_hora*2.65*extra_nocturna_dom_h
+        ed = valor_hora*1.25*h_ed
+        en = valor_hora*1.75*h_en
+        ef = valor_hora*2.15*h_ef
+        end = valor_hora*2.65*h_end
 
         # Recargos
-        recargo_nocturno = valor_hora*0.35*recargo_nocturno_h
-        recargo_dominical = valor_hora*0.90*recargo_dominical_h
+        rn = valor_hora*0.35*h_rn
+        rd = valor_hora*0.90*h_rd
 
-        # Auxilio
+        ibc = salario + ed + en + ef + end + rn + rd
+
+        salud = ibc*0.04
+        pension = 0 if no_pension else ibc*0.04
+
         auxilio = 0
-        if situacion == "Ninguna" and salario_mensual <= 3501810:
-            auxilio = (249095/30) * dias_trabajados
-
-        # IBC
-        ibc = salario + extra_diurna + extra_nocturna + extra_dominical + extra_nocturna_dom + recargo_nocturno + recargo_dominical
-
-        salud = ibc * 0.04
-        pension = 0 if no_pension else ibc * 0.04
+        if salario_mensual <= 3501810:
+            auxilio = (249095/30)*dias_trabajados
 
         devengado = ibc + auxilio + bonificaciones
         deducciones = salud + pension + consumos + danos + ahorros + otros
@@ -92,29 +83,26 @@ with st.form("empleado"):
 
         st.session_state.empleados.append({
             "Empleado": nombre,
-            "Cédula": cedula,
             "Salario": salario,
-            "Auxilio Transporte": auxilio,
-            "Horas Extra Diurna": extra_diurna,
-            "Horas Extra Nocturna": extra_nocturna,
-            "Horas Extra Dominical": extra_dominical,
-            "Horas Extra Nocturna Dominical": extra_nocturna_dom,
-            "Recargo Nocturno": recargo_nocturno,
-            "Recargo Dominical": recargo_dominical,
-            "Horas Diurna H": extra_diurna_h,
-            "Horas Nocturna H": extra_nocturna_h,
-            "Horas Dominical H": extra_dominical_h,
-            "Horas Nocturna Dom H": extra_nocturna_dom_h,
-            "Recargo Nocturno H": recargo_nocturno_h,
-            "Recargo Dominical H": recargo_dominical_h,
+            "Auxilio": auxilio,
             "Bonificaciones": bonificaciones,
-            "Devengado": devengado,
+
+            "h_ed": h_ed, "ed": ed,
+            "h_en": h_en, "en": en,
+            "h_ef": h_ef, "ef": ef,
+            "h_end": h_end, "end": end,
+
+            "h_rn": h_rn, "rn": rn,
+            "h_rd": h_rd, "rd": rd,
+
             "Salud": salud,
-            "Pensión": pension,
+            "Pension": pension,
             "Consumos": consumos,
             "Daños": danos,
             "Ahorros": ahorros,
             "Otros": otros,
+
+            "Devengado": devengado,
             "Deducciones": deducciones,
             "Neto": neto
         })
@@ -122,40 +110,42 @@ with st.form("empleado"):
         st.success("Empleado agregado")
 
 # Lista
-st.header("Lista de empleados")
+st.header("Empleados")
 for emp in st.session_state.empleados:
-    st.write(emp["Empleado"], "Neto:", pesos(emp["Neto"]))
+    st.write(emp["Empleado"], pesos(emp["Neto"]))
 
 # PDF
 def generar_pdf(emp):
-    nombre_seguro = re.sub(r'[^a-zA-Z0-9]','_',emp["Empleado"])
-    archivo = f"colilla_{nombre_seguro}.pdf"
+    archivo = f"colilla_{emp['Empleado']}.pdf"
     c = canvas.Canvas(archivo, pagesize=letter)
-    y = 750
 
-    # ✅ LOGO CORREGIDO
-    if logo is not None:
+    y = 800
+
+    # LOGO
+    if logo:
         try:
             with open("logo_temp.png", "wb") as f:
                 f.write(logo.getbuffer())
-            c.drawImage("logo_temp.png", 50, 700, width=120, height=60)
+            c.drawImage("logo_temp.png", 50, 740, width=120, height=60)
+            y = 700  # baja contenido para no chocar
         except:
             pass
 
+    # Título
     c.setFont("Helvetica-Bold",14)
-    c.drawString(220,y,"COLILLA DE PAGO")
-    y -= 40
+    c.drawString(200,y,"COLILLA DE PAGO")
+    y -= 30
 
     c.setFont("Helvetica",10)
     c.drawString(50,y,f"Empresa: {empresa}")
     y -= 15
     c.drawString(50,y,f"Empleado: {emp['Empleado']}")
-    y -= 20
+    y -= 25
 
     # DEVENGADO
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"DEVENGADO")
-    y -= 20
+    y -= 15
 
     c.setFont("Helvetica",10)
     c.drawString(50,y,"Salario")
@@ -163,34 +153,56 @@ def generar_pdf(emp):
     y -= 15
 
     c.drawString(50,y,"Auxilio")
-    c.drawRightString(550,y,pesos(emp["Auxilio Transporte"]))
+    c.drawRightString(550,y,pesos(emp["Auxilio"]))
     y -= 15
 
     c.drawString(50,y,"Bonificaciones")
     c.drawRightString(550,y,pesos(emp["Bonificaciones"]))
     y -= 20
 
+    # HORAS EXTRAS
+    c.setFont("Helvetica-Bold",11)
+    c.drawString(50,y,"HORAS EXTRAS")
+    y -= 15
+
+    c.setFont("Helvetica",10)
+    c.drawString(50,y,f"Extra Diurna ({emp['h_ed']}h)")
+    c.drawRightString(550,y,pesos(emp["ed"]))
+    y -= 15
+
+    c.drawString(50,y,f"Extra Nocturna ({emp['h_en']}h)")
+    c.drawRightString(550,y,pesos(emp["en"]))
+    y -= 15
+
+    c.drawString(50,y,f"Extra Dominical ({emp['h_ef']}h)")
+    c.drawRightString(550,y,pesos(emp["ef"]))
+    y -= 15
+
+    c.drawString(50,y,f"Extra Nocturna Dominical ({emp['h_end']}h)")
+    c.drawRightString(550,y,pesos(emp["end"]))
+    y -= 20
+
     # RECARGOS
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"RECARGOS")
-    y -= 20
-
-    c.setFont("Helvetica",10)
-    c.drawString(50,y,f"Nocturno ({emp['Recargo Nocturno H']}h)")
-    c.drawRightString(550,y,pesos(emp["Recargo Nocturno"]))
     y -= 15
 
-    c.drawString(50,y,f"Dominical ({emp['Recargo Dominical H']}h)")
-    c.drawRightString(550,y,pesos(emp["Recargo Dominical"]))
-    y -= 25
+    c.setFont("Helvetica",10)
+    c.drawString(50,y,f"Nocturno ({emp['h_rn']}h)")
+    c.drawRightString(550,y,pesos(emp["rn"]))
+    y -= 15
+
+    c.drawString(50,y,f"Dominical ({emp['h_rd']}h)")
+    c.drawRightString(550,y,pesos(emp["rd"]))
+    y -= 20
 
     # DEDUCCIONES
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"DEDUCCIONES")
-    y -= 20
+    y -= 15
 
     c.setFont("Helvetica",10)
-    for campo in ["Salud","Pensión","Consumos","Daños","Ahorros","Otros"]:
+    for campo in ["Salud","Pension","Consumos","Daños","Ahorros","Otros"]:
         c.drawString(50,y,campo)
         c.drawRightString(550,y,pesos(emp[campo]))
         y -= 15
@@ -203,10 +215,10 @@ def generar_pdf(emp):
     c.save()
     return archivo
 
-# Botón PDF
+# Botón
 st.header("Generar PDF")
 for i, emp in enumerate(st.session_state.empleados):
     if st.button(f"PDF - {emp['Empleado']}", key=i):
         archivo = generar_pdf(emp)
         with open(archivo, "rb") as f:
-            st.download_button("Descargar PDF", f, archivo)
+            st.download_button("Descargar", f, archivo)
