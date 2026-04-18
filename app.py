@@ -3,7 +3,6 @@ import pandas as pd
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from datetime import date
-from PIL import Image
 import re
 
 st.title("LIQUIDADOR DE NÓMINA")
@@ -12,10 +11,11 @@ st.markdown("### by Juan Pablo Villegas")
 def pesos(valor):
     return "${:,.0f}".format(valor).replace(",", ".")
 
+# Estado
 if "empleados" not in st.session_state:
     st.session_state.empleados = []
 
-# Datos empresa
+# Empresa
 st.header("Datos de la empresa")
 empresa = st.text_input("Nombre de la empresa")
 nit = st.text_input("NIT o cédula del empleador")
@@ -26,7 +26,7 @@ st.header("Periodo de pago")
 fecha_inicio = st.date_input("Fecha inicio", date.today())
 fecha_fin = st.date_input("Fecha fin", date.today())
 
-# Agregar empleado
+# Formulario
 st.header("Agregar empleado manualmente")
 with st.form("empleado"):
     nombre = st.text_input("Nombre empleado")
@@ -65,7 +65,7 @@ with st.form("empleado"):
         salario = (salario_mensual/30)*dias_trabajados
         valor_hora = salario_mensual/220
 
-        # Horas extras
+        # Extras
         extra_diurna = valor_hora*1.25*extra_diurna_h
         extra_nocturna = valor_hora*1.75*extra_nocturna_h
         extra_dominical = valor_hora*2.15*extra_dominical_h
@@ -87,16 +87,12 @@ with st.form("empleado"):
         pension = 0 if no_pension else ibc * 0.04
 
         devengado = ibc + auxilio + bonificaciones
-
-        # ✅ DEDUCCIONES CORRECTAS
         deducciones = salud + pension + consumos + danos + ahorros + otros
-
         neto = devengado - deducciones
 
         st.session_state.empleados.append({
             "Empleado": nombre,
             "Cédula": cedula,
-            "Días trabajados": dias_trabajados,
             "Salario": salario,
             "Auxilio Transporte": auxilio,
             "Horas Extra Diurna": extra_diurna,
@@ -112,11 +108,9 @@ with st.form("empleado"):
             "Recargo Nocturno H": recargo_nocturno_h,
             "Recargo Dominical H": recargo_dominical_h,
             "Bonificaciones": bonificaciones,
-            "IBC": ibc,
             "Devengado": devengado,
             "Salud": salud,
             "Pensión": pension,
-            "No Pension": no_pension,
             "Consumos": consumos,
             "Daños": danos,
             "Ahorros": ahorros,
@@ -130,17 +124,33 @@ with st.form("empleado"):
 # Lista
 st.header("Lista de empleados")
 for emp in st.session_state.empleados:
-    st.write(emp["Empleado"], "Neto a pagar:", pesos(emp["Neto"]))
+    st.write(emp["Empleado"], "Neto:", pesos(emp["Neto"]))
 
 # PDF
 def generar_pdf(emp):
-    archivo = f"colilla_{emp['Empleado']}.pdf"
-    c = canvas.Canvas(archivo,pagesize=letter)
+    nombre_seguro = re.sub(r'[^a-zA-Z0-9]','_',emp["Empleado"])
+    archivo = f"colilla_{nombre_seguro}.pdf"
+    c = canvas.Canvas(archivo, pagesize=letter)
     y = 750
 
+    # ✅ LOGO CORREGIDO
+    if logo is not None:
+        try:
+            with open("logo_temp.png", "wb") as f:
+                f.write(logo.getbuffer())
+            c.drawImage("logo_temp.png", 50, 700, width=120, height=60)
+        except:
+            pass
+
     c.setFont("Helvetica-Bold",14)
-    c.drawString(200,y,"COLILLA DE PAGO")
+    c.drawString(220,y,"COLILLA DE PAGO")
     y -= 40
+
+    c.setFont("Helvetica",10)
+    c.drawString(50,y,f"Empresa: {empresa}")
+    y -= 15
+    c.drawString(50,y,f"Empleado: {emp['Empleado']}")
+    y -= 20
 
     # DEVENGADO
     c.setFont("Helvetica-Bold",11)
@@ -158,44 +168,35 @@ def generar_pdf(emp):
 
     c.drawString(50,y,"Bonificaciones")
     c.drawRightString(550,y,pesos(emp["Bonificaciones"]))
-    y -= 30
+    y -= 20
 
-    # DEDUCCIONES COMPLETAS
+    # RECARGOS
+    c.setFont("Helvetica-Bold",11)
+    c.drawString(50,y,"RECARGOS")
+    y -= 20
+
+    c.setFont("Helvetica",10)
+    c.drawString(50,y,f"Nocturno ({emp['Recargo Nocturno H']}h)")
+    c.drawRightString(550,y,pesos(emp["Recargo Nocturno"]))
+    y -= 15
+
+    c.drawString(50,y,f"Dominical ({emp['Recargo Dominical H']}h)")
+    c.drawRightString(550,y,pesos(emp["Recargo Dominical"]))
+    y -= 25
+
+    # DEDUCCIONES
     c.setFont("Helvetica-Bold",11)
     c.drawString(50,y,"DEDUCCIONES")
     y -= 20
 
     c.setFont("Helvetica",10)
-    c.drawString(50,y,"Salud")
-    c.drawRightString(550,y,pesos(emp["Salud"]))
-    y -= 15
+    for campo in ["Salud","Pensión","Consumos","Daños","Ahorros","Otros"]:
+        c.drawString(50,y,campo)
+        c.drawRightString(550,y,pesos(emp[campo]))
+        y -= 15
 
-    c.drawString(50,y,"Pensión")
-    c.drawRightString(550,y,pesos(emp["Pensión"]))
-    y -= 15
-
-    c.drawString(50,y,"Consumos")
-    c.drawRightString(550,y,pesos(emp["Consumos"]))
-    y -= 15
-
-    c.drawString(50,y,"Daños")
-    c.drawRightString(550,y,pesos(emp["Daños"]))
-    y -= 15
-
-    c.drawString(50,y,"Ahorros")
-    c.drawRightString(550,y,pesos(emp["Ahorros"]))
-    y -= 15
-
-    c.drawString(50,y,"Otros")
-    c.drawRightString(550,y,pesos(emp["Otros"]))
-    y -= 30
-
-    # TOTALES
+    y -= 10
     c.setFont("Helvetica-Bold",11)
-    c.drawString(50,y,"TOTAL DEDUCCIONES")
-    c.drawRightString(550,y,pesos(emp["Deducciones"]))
-    y -= 20
-
     c.drawString(50,y,"NETO A PAGAR")
     c.drawRightString(550,y,pesos(emp["Neto"]))
 
@@ -208,4 +209,4 @@ for i, emp in enumerate(st.session_state.empleados):
     if st.button(f"PDF - {emp['Empleado']}", key=i):
         archivo = generar_pdf(emp)
         with open(archivo, "rb") as f:
-            st.download_button("Descargar", f, archivo)
+            st.download_button("Descargar PDF", f, archivo)
