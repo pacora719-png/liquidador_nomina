@@ -32,17 +32,21 @@ with st.form("empleado"):
     salario_mensual = st.number_input("Salario mensual", value=1750905)
     dias_trabajados = st.number_input("Días trabajados",0,30,30)
 
-    no_pension = st.checkbox("No descontar pensión")
+    col1, col2 = st.columns(2)
+    with col1:
+        no_pension = st.checkbox("No descontar pensión")
+    with col2:
+        no_salud = st.checkbox("No descontar salud")
 
     st.subheader("Horas extras")
-    h_ed = st.number_input("Extra diurna",0)
-    h_en = st.number_input("Extra nocturna",0)
-    h_ef = st.number_input("Extra dominical",0)
-    h_end = st.number_input("Extra nocturna dominical",0)
+    h_ed = st.number_input("Extra diurna",0.0, step=0.1)
+    h_en = st.number_input("Extra nocturna",0.0, step=0.1)
+    h_ef = st.number_input("Extra dominical",0.0, step=0.1)
+    h_end = st.number_input("Extra nocturna dominical",0.0, step=0.1)
 
     st.subheader("Recargos")
-    h_rn = st.number_input("Recargo nocturno",0)
-    h_rd = st.number_input("Recargo dominical",0)
+    h_rn = st.number_input("Recargo nocturno",0.0, step=0.1)
+    h_rd = st.number_input("Recargo dominical",0.0, step=0.1)
 
     bonificaciones = st.number_input("Bonificaciones",0)
 
@@ -70,7 +74,7 @@ with st.form("empleado"):
 
         ibc = salario + ed + en + ef + end + rn + rd
 
-        salud = ibc*0.04
+        salud = 0 if no_salud else ibc*0.04
         pension = 0 if no_pension else ibc*0.04
 
         auxilio = 0
@@ -96,7 +100,10 @@ with st.form("empleado"):
             "h_rd": h_rd, "rd": rd,
 
             "Salud": salud,
+            "NoSalud": no_salud,
             "Pension": pension,
+            "NoPension": no_pension,
+
             "Consumos": consumos,
             "Daños": danos,
             "Ahorros": ahorros,
@@ -121,17 +128,16 @@ def generar_pdf(emp):
 
     y = 800
 
-    # LOGO
+    # Logo
     if logo:
         try:
             with open("logo_temp.png", "wb") as f:
                 f.write(logo.getbuffer())
             c.drawImage("logo_temp.png", 50, 740, width=120, height=60)
-            y = 700  # baja contenido para no chocar
+            y = 700
         except:
             pass
 
-    # Título
     c.setFont("Helvetica-Bold",14)
     c.drawString(200,y,"COLILLA DE PAGO")
     y -= 30
@@ -202,7 +208,17 @@ def generar_pdf(emp):
     y -= 15
 
     c.setFont("Helvetica",10)
-    for campo in ["Salud","Pension","Consumos","Daños","Ahorros","Otros"]:
+    c.drawString(50,y,"Salud")
+    texto_salud = "No aplica" if emp["NoSalud"] else pesos(emp["Salud"])
+    c.drawRightString(550,y,texto_salud)
+    y -= 15
+
+    c.drawString(50,y,"Pensión")
+    texto_pension = "No aplica" if emp["NoPension"] else pesos(emp["Pension"])
+    c.drawRightString(550,y,texto_pension)
+    y -= 15
+
+    for campo in ["Consumos","Daños","Ahorros","Otros"]:
         c.drawString(50,y,campo)
         c.drawRightString(550,y,pesos(emp[campo]))
         y -= 15
@@ -215,7 +231,7 @@ def generar_pdf(emp):
     c.save()
     return archivo
 
-# Botón
+# Botón PDF
 st.header("Generar PDF")
 for i, emp in enumerate(st.session_state.empleados):
     if st.button(f"PDF - {emp['Empleado']}", key=i):
