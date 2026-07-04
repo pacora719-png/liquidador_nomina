@@ -94,6 +94,7 @@ with st.form("form"):
         st.session_state.empleados.append({
             "Empleado": nombre,
             "Cedula": cedula,
+            "Dias": dias,
             "Salario": salario,
             "Auxilio": auxilio,
             "Bonificaciones": bonificaciones,
@@ -149,9 +150,16 @@ def generar_pdf(emp):
     c.drawString(50,y,f"NIT: {nit}")
     y -= 15
     c.drawString(50,y,f"Empleado: {emp['Empleado']}")
-    y -= 15
-    c.drawString(50,y,f"Cédula: {emp['Cedula']}")
-    y -= 20
+y -= 15
+
+c.drawString(50,y,f"Cédula: {emp['Cedula']}")
+y -= 15
+
+c.drawString(50,y,f"Período: {fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}")
+y -= 15
+
+c.drawString(50,y,f"Días trabajados: {emp['Dias']}")
+y -= 20
 
     # DEVENGADOS
     c.setFont("Helvetica-Bold",11)
