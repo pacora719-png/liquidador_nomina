@@ -150,16 +150,16 @@ def generar_pdf(emp):
     c.drawString(50,y,f"NIT: {nit}")
     y -= 15
     c.drawString(50,y,f"Empleado: {emp['Empleado']}")
-y -= 15
+    y -= 15
 
-c.drawString(50,y,f"Cédula: {emp['Cedula']}")
-y -= 15
+    c.drawString(50,y,f"Cédula: {emp['Cedula']}")
+    y -= 15
 
-c.drawString(50,y,f"Período: {fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}")
-y -= 15
+    c.drawString(50,y,f"Período: {fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}")
+    y -= 15
 
-c.drawString(50,y,f"Días trabajados: {emp['Dias']}")
-y -= 20
+    c.drawString(50,y,f"Días trabajados: {emp['Dias']}")
+    y -= 20
 
     # DEVENGADOS
     c.setFont("Helvetica-Bold",11)
