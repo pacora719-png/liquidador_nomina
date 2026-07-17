@@ -67,7 +67,7 @@ with st.form("form"):
     btn = st.form_submit_button("Agregar")
 
     if btn:
-        valor_hora = salario_mensual / 220
+        valor_hora = salario_mensual / 210
         salario = (salario_mensual/30)*dias
 
         ed = valor_hora*1.25*h_ed
